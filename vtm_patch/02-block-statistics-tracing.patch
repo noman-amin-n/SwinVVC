@@ -1,0 +1,33 @@
+diff --git a/source/Lib/CommonLib/TypeDef.h b/source/Lib/CommonLib/TypeDef.h
+index e547758..e46fb4a 100644
+--- a/source/Lib/CommonLib/TypeDef.h
++++ b/source/Lib/CommonLib/TypeDef.h
+@@ -111,13 +111,13 @@
+ // ====================================================================================================================
+ 
+ #ifndef ENABLE_TRACING
+-#define ENABLE_TRACING                                    0 // DISABLE by default (enable only when debugging, requires 15% run-time in decoding) -- see documentation in 'doc/DTrace for NextSoftware.pdf'
++#define ENABLE_TRACING                                    1 // DISABLE by default (enable only when debugging, requires 15% run-time in decoding) -- see documentation in 'doc/DTrace for NextSoftware.pdf'
+ #endif
+ 
+ #if ENABLE_TRACING
+ #define K0149_BLOCK_STATISTICS                            1 // enables block statistics, which can be analysed with YUView (https://github.com/IENT/YUView)
+ #if K0149_BLOCK_STATISTICS
+-#define BLOCK_STATS_AS_CSV                                0 // statistics will be written in a comma separated value format. this is not supported by YUView
++#define BLOCK_STATS_AS_CSV                                1 // statistics will be written in a comma separated value format. this is not supported by YUView
+ #endif
+ #endif
+ 
+diff --git a/source/Lib/CommonLib/dtrace_blockstatistics.cpp b/source/Lib/CommonLib/dtrace_blockstatistics.cpp
+index 8da4590..a35858f 100644
+--- a/source/Lib/CommonLib/dtrace_blockstatistics.cpp
++++ b/source/Lib/CommonLib/dtrace_blockstatistics.cpp
+@@ -920,7 +920,7 @@ void writeAllData(const CodingStructure& cs, const UnitArea& ctuArea)
+                   const uint32_t chFinalMode = PU::getFinalIntraMode(pu, ChannelType(chType));
+                   DTRACE_BLOCK_SCALAR_CHROMA(g_trace_ctx, D_BLOCK_STATISTICS_ALL, pu,
+                                              GetBlockStatisticName(BlockStatistic::Chroma_IntraMode), chFinalMode);
+-                  assert(0);
++//                  assert(0);
+                 }
+               }
+             }

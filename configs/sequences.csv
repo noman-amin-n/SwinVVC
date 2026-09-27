@@ -1,0 +1,23 @@
+# JVET / JCT-VC common test sequences used for evaluation.
+# Format: name,width,height
+# Consumed by the batch loop in docs/dataset_generation.md.
+Campfire_3840x2160_30,3840,2160
+Tango2_3840x2160_60,3840,2160
+CatRobot_3840x2160_60,3840,2160
+DaylightRoad2_3840x2160_60,3840,2160
+ParkRunning3_3840x2160_50,3840,2160
+Traffic_2560x1600_30,2560,1600
+BasketballDrive_1920x1080_50,1920,1080
+BQTerrace_1920x1080_60,1920,1080
+Cactus_1920x1080_50,1920,1080
+Kimono1_1920x1080_24,1920,1080
+MarketPlace_1920x1080_60,1920,1080
+ParkScene_1920x1080_24,1920,1080
+BasketballDrill_832x480_50,832,480
+BQMall_832x480_60,832,480
+PartyScene_832x480_50,832,480
+RaceHorses_832x480_30,832,480
+BasketballPass_416x240_50,416,240
+BlowingBubbles_416x240_50,416,240
+BQSquare_416x240_60,416,240
+RaceHorses_416x240_30,416,240

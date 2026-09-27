@@ -1,0 +1,69 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "swinvvc"
+version = "1.0.0"
+description = "Vision Transformer-driven CU partitioning for fast VVC intra encoding"
+readme = "README.md"
+requires-python = ">=3.9"
+
+authors = [
+    { name = "Md. Zahirul Islam" },
+    { name = "Noman Amin" },
+    { name = "Manoranjan Paul" },
+    { name = "Zhenni Pan" },
+    { name = "Quazi Mamun" },
+]
+
+keywords = [
+    "versatile video coding",
+    "vvc",
+    "vtm",
+    "coding unit partitioning",
+    "swin transformer",
+    "vision transformer",
+    "video compression",
+    "encoding complexity",
+]
+
+classifiers = [
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Multimedia :: Video",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    "numpy>=1.24",
+    "opencv-python>=4.8",
+    "Pillow>=10.0",
+    "torch>=2.0",
+    "torchvision>=0.15",
+    "timm>=0.9",
+    "scikit-learn>=1.3",
+    "matplotlib>=3.7",
+    "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.4"]
+notebooks = ["jupyterlab", "ipykernel", "seaborn"]
+
+[tool.setuptools.packages.find]
+include = ["swinvvc*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.black]
+line-length = 95
+
+[tool.isort]
+profile = "black"
+line_length = 95

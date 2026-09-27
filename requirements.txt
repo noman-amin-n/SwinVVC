@@ -1,0 +1,25 @@
+# Core runtime dependencies.
+#
+# Versions are lower bounds, not pins: the code targets stable APIs in all of
+# these. For a reproducible environment use environment.yml instead.
+#
+# Stages that need only NumPy/OpenCV/Pillow (label extraction, block
+# extraction, CSV->TXT conversion, BD metrics) import torch lazily, so they run
+# without the deep-learning stack installed.
+
+# --- numerics and image I/O --------------------------------------------------
+numpy>=1.24
+opencv-python>=4.8
+Pillow>=10.0
+
+# --- deep learning -----------------------------------------------------------
+torch>=2.0
+torchvision>=0.15
+timm>=0.9              # supplies swin_base_patch4_window7_224 + ImageNet weights
+
+# --- metrics and plotting ----------------------------------------------------
+scikit-learn>=1.3
+matplotlib>=3.7
+
+# --- configuration -----------------------------------------------------------
+PyYAML>=6.0

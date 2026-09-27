@@ -1,0 +1,360 @@
+diff --git a/source/Lib/CommonLib/Picture.h b/source/Lib/CommonLib/Picture.h
+index 278bbd8..0beb93f 100644
+--- a/source/Lib/CommonLib/Picture.h
++++ b/source/Lib/CommonLib/Picture.h
+@@ -160,6 +160,12 @@ struct Picture : public UnitArea
+   void finalInit( const VPS* vps, const SPS& sps, const PPS& pps, PicHeader *picHeader, APS** alfApss, APS* lmcsAps, APS* scalingListAps );
+ 
+   int  getPOC()                               const { return poc; }
++
++  // 310723-tanvir added
++  void setCUDepth(int* pCUDepth) { m_pCUDepth = pCUDepth; }
++  int* getCUDepth() { return m_pCUDepth; }
++  // 310723-tanvir ended
++
+   int  getDecodingOrderNumber()               const { return m_decodingOrderNumber; }
+   void setDecodingOrderNumber(const int val)        { m_decodingOrderNumber = val;  }
+   NalUnitType getPictureType()                const { return m_pictureType;         }
+@@ -201,6 +207,11 @@ private:
+   Window        m_scalingWindow;
+   int           m_decodingOrderNumber;
+   NalUnitType   m_pictureType;
++
++  // 310723-tanvir added
++  int*  m_pCUDepth;            // array to store predicted probability of CU partition (in HCPM format) for one frame
++  // 310723-tanvir ended
++
+ #if GREEN_METADATA_SEI_ENABLED
+   FeatureCounterStruct m_featureCounter;
+ #endif
+diff --git a/source/Lib/EncoderLib/EncCu.cpp b/source/Lib/EncoderLib/EncCu.cpp
+index 9d2ee31..4a48d69 100644
+--- a/source/Lib/EncoderLib/EncCu.cpp
++++ b/source/Lib/EncoderLib/EncCu.cpp
+@@ -236,6 +236,10 @@ void EncCu::init( EncLib* pcEncLib, const SPS& sps )
+ // Public member functions
+ // ====================================================================================================================
+ 
++  // 310723-tanvir added
++  int current_ctu_address;
++  // 310723-tanvir ended
++
+ void EncCu::compressCtu(CodingStructure &cs, const UnitArea &area, const unsigned ctuRsAddr,
+                         const EnumArray<int, ChannelType> &prevQP, const EnumArray<int, ChannelType> &currQP)
+ {
+@@ -283,6 +287,38 @@ void EncCu::compressCtu(CodingStructure &cs, const UnitArea &area, const unsigne
+     currQP[ChannelType::LUMA];
+   tempCS->prevQP[ChannelType::LUMA] = bestCS->prevQP[ChannelType::LUMA] = prevQP[ChannelType::LUMA];
+ 
++    // 310723-tanvir added
++    current_ctu_address = ctuRsAddr;
++    static FILE* fpCUDepth;
++    static char  phFileName[100];
++    sprintf(phFileName, "qp_32/POC/Traffic_2560x1600_30/POC_%d.txt", (int) cs.slice->getPOC());
++//    sprintf(phFileName, "Prediction_PartyScene_480p_DCT_Based_64by64_POC_%d.txt", (int) cs.slice->getPOC());
++    fpCUDepth = fopen(phFileName, "rb");
++
++    const static int iWidth           = cs.slice->getPic()->getPicWidthInLumaSamples();
++    const static int iHeight          = cs.slice->getPic()->getPicHeightInLumaSamples();
++    const static int validWidthInCTU  = iWidth % 128 == 0 ? iWidth / 128 : iWidth / 128 + 1;
++    const static int validHeightInCTU = iHeight % 128 == 0 ? iHeight / 128 : iHeight / 128 + 1;
++
++    static int fUp[1];
++    if (ctuRsAddr == 0)
++    {
++    //int* pCUDepthTemp = new int[validWidthInCTU * validHeightInCTU * 21];
++    int* pCUDepthTemp = new int[validWidthInCTU * validHeightInCTU * 341];
++
++    int count = 0;
++
++    while (fscanf(fpCUDepth, "%d", &fUp[0]) != EOF)
++    {
++      pCUDepthTemp[count] = fUp[0];
++      count++;
++    }
++    cs.slice->getPic()->setCUDepth(pCUDepthTemp);
++    }
++    fclose(fpCUDepth);
++
++    // 310723-tanvir ended
++
+   xCompressCU(tempCS, bestCS, partitioner);
+   cs.slice->m_mapPltCost[0].clear();
+   cs.slice->m_mapPltCost[1].clear();
+@@ -537,6 +573,189 @@ void EncCu::xCompressCU( CodingStructure*& tempCS, CodingStructure*& bestCS, Par
+ 
+   tempCS->splitRdCostBest = nullptr;
+   m_modeCtrl->initCULevel( partitioner, *tempCS );
++
++  // 310723-tanvir added
++  
++  if ((partitioner.chType == ChannelType::LUMA) && (currCsArea.lumaSize().height == 32) && (currCsArea.lumaSize().width == 32))
++  {
++    int x            = currCsArea.lx();
++    int y            = currCsArea.ly();
++    int height       = currCsArea.lumaSize().height;
++    int width        = currCsArea.lumaSize().width;
++    int CU_size      = height * width;
++    int depth_QT     = int(partitioner.currQtDepth);
++    int depth_MT     = int(partitioner.currMtDepth);
++    int video_width  = slice.getPic()->getPicWidthInLumaSamples();
++    int video_height = slice.getPic()->getPicHeightInLumaSamples();
++
++    unsigned char uhLeftInCTU, uhTopInCTU;
++    uhLeftInCTU = uiLPelX % 128;
++    uhTopInCTU  = uiTPelY % 128;
++
++    if (height < 128 && ((x + width <= video_width) && (y + height <= video_height)))
++    {
++      if (depth_MT == 3) {}
++      else
++      {
++        if (height == 4 && width == 4) {}
++        else
++        {
++          int iCTUAddr      = current_ctu_address;
++          int res           = 0;
++          int indexIn21Data = 0;
++
++          if (width == 128 && height == 128)
++          {
++            indexIn21Data = 0;
++          }
++          else if (width == 64 && height == 64)
++          {
++            indexIn21Data = 1 + uhLeftInCTU / 64 + uhTopInCTU / 64 * 2;
++          }
++          else if (width == 32 && height == 32)
++          {
++            indexIn21Data = 5 + uhLeftInCTU / 32 + uhTopInCTU / 32 * 4;
++          }
++          else if (width == 16 && height == 16)
++          {
++            indexIn21Data = 21 + uhLeftInCTU / 16 + uhTopInCTU / 16 * 8;
++          }
++          else if (width == 8 && height == 8)
++          {
++            indexIn21Data = 85 + uhLeftInCTU / 8 + uhTopInCTU / 8 * 16;
++          }
++
++          int* plfProbArray = slice.getPic()->getCUDepth();
++          res               = plfProbArray[341 * iCTUAddr + indexIn21Data];
++
++          std::vector<EncTestMode> partition_mode;
++          partition_mode.push_back(m_modeCtrl->currTestMode());
++          bool Valid = false;
++          if (res == -2)  // For noman it's -2 for ETM_INTRA
++          {
++            partition_mode.back().type = ETM_INTRA;
++          }
++          else if (res == 1)
++          {
++            partition_mode.back().type = ETM_SPLIT_QT;
++          }
++          else if (res == 2)
++          {
++            partition_mode.back().type = ETM_SPLIT_BT_H;
++          }
++          else if (res == 3)
++          {
++            partition_mode.back().type = ETM_SPLIT_BT_V;
++          }
++          else if (res == 4)
++          {
++            partition_mode.back().type = ETM_SPLIT_TT_H;
++          }
++          else if (res == 5)
++          {
++            partition_mode.back().type = ETM_SPLIT_TT_V;
++          }
++
++//          if (res != -1)
++//          {
++            Valid = m_modeCtrl->tryModeMaster(partition_mode.back(), *tempCS, partitioner);
++//            if (res == -2)
++//            {
++//              Valid = false;
++//            }
++//          }
++//          else
++//          {
++//            Valid = false;
++//          }
++
++          if (Valid == true)
++          {
++            m_modeCtrl->ChangeTestMode(res);
++          }
++        }
++      }
++    }
++
++    
++    /*
++    if (height < 128 && ((x + width <= video_width) && (y + height <= video_height)))
++    {
++      if (depth_MT == 3) {}
++      else
++      {
++        if (height == 4 && width == 4) {}
++        else
++        {
++          //std::cout << "Width: " << width << " Height: " << height << " X: " << x << " Y: " << y << " X+Width: " << x+width << " Y+Height: " << y+height << std::endl;
++          std::vector<EncTestMode> partition_mode;
++          res = 3;
++          if (res <= -2 || res >= 6)
++          {
++            std::cout << "The result is wrong" << std::endl;
++          }
++          else
++          {
++            partition_mode.push_back(m_modeCtrl->currTestMode());
++            bool Valid = false;
++            if (res == 0)
++            {
++              partition_mode.back().type = ETM_INTRA;
++            }
++            else if (res == 1)
++            {
++              partition_mode.back().type = ETM_SPLIT_QT;
++            }
++            else if (res == 2)
++            {
++              partition_mode.back().type = ETM_SPLIT_BT_H;
++            }
++            else if (res == 3)
++            {
++              partition_mode.back().type = ETM_SPLIT_BT_V;
++            }
++            else if (res == 4)
++            {
++              partition_mode.back().type = ETM_SPLIT_TT_H;
++            }
++            else if (res == 5)
++            {
++              partition_mode.back().type = ETM_SPLIT_TT_V;
++            }
++
++            if (res != -1)
++            {
++              Valid = m_modeCtrl->tryModeMaster(partition_mode.back(), *tempCS, partitioner);
++              
++              if (1)
++              {
++                if (res == 0)
++                {
++                  Valid = false;
++                }
++              }
++            }
++            else
++            {
++              Valid = false;
++            }
++
++            if (Valid == true)
++            {
++              //std::cout << "Width: " << width << " Height: " << height << " X: " << x << " Y: " << y
++              //          << " X+Width: " << x + width << " Y+Height: " << y + height << std::endl;
++
++              m_modeCtrl->ChangeTestMode(res);
++            }
++          }
++        }
++      }
++    }*/
++  }
++
++  // 310723-tanvir ended
++
++
+ #if GDR_ENABLED
+   if (m_pcEncCfg->getGdrEnabled())
+   {
+diff --git a/source/Lib/EncoderLib/EncModeCtrl.cpp b/source/Lib/EncoderLib/EncModeCtrl.cpp
+index 9048542..afbc080 100644
+--- a/source/Lib/EncoderLib/EncModeCtrl.cpp
++++ b/source/Lib/EncoderLib/EncModeCtrl.cpp
+@@ -51,6 +51,61 @@
+ 
+ static constexpr double UNSET_IMV_COST = MAX_DOUBLE * 0.125;   // Some large, unique value
+ 
++// 310723-tanvir added
++void EncModeCtrl::ChangeTestMode(int mode)
++{
++  {
++    EncTestMode ENMode = m_ComprCUCtxList.back().testModes.back();
++
++    while (!m_ComprCUCtxList.back().testModes.empty())
++    {
++      m_ComprCUCtxList.back().testModes.pop_back();
++    }
++
++    m_ComprCUCtxList.back().testModes.push_back(ENMode);
++    m_ComprCUCtxList.back().testModes.back().type = ETM_INTRA;
++    if (mode == 0)
++    {
++      m_ComprCUCtxList.back().testModes.back().type = ETM_INTRA;
++    }
++    else if (mode == 1)
++    {
++      m_ComprCUCtxList.back().testModes.back().type = ETM_SPLIT_QT;
++    }
++    else if (mode == 2)
++    {
++      m_ComprCUCtxList.back().testModes.back().type = ETM_SPLIT_BT_H;
++    }
++    else if (mode == 3)
++    {
++      m_ComprCUCtxList.back().testModes.back().type = ETM_SPLIT_BT_V;
++    }
++    else if (mode == 4)
++    {
++      m_ComprCUCtxList.back().testModes.back().type = ETM_SPLIT_TT_H;
++    }
++    else if (mode == 5)
++    {
++      m_ComprCUCtxList.back().testModes.back().type = ETM_SPLIT_TT_V;
++    }
++  }
++}
++
++void EncModeCtrl::Modify(CodingStructure* cs, Partitioner& partitioner)
++{
++  if (!tryModeMaster(currTestMode(), *cs, partitioner))
++  {
++    m_ComprCUCtxList.back().testModes.pop_back();
++    m_ComprCUCtxList.back().testModes.back() = ETM_INTRA;
++    m_ComprCUCtxList.back().testModes.push_back(ETM_SPLIT_QT);
++    m_ComprCUCtxList.back().testModes.push_back(ETM_SPLIT_BT_H);
++    m_ComprCUCtxList.back().testModes.push_back(ETM_SPLIT_BT_V);
++    m_ComprCUCtxList.back().testModes.push_back(ETM_SPLIT_TT_H);
++    m_ComprCUCtxList.back().testModes.push_back(ETM_SPLIT_TT_V);
++  }
++}
++// 310723-tanvir ended
++
+ void EncModeCtrl::init( EncCfg *pCfg, RateCtrl *pRateCtrl, RdCost* pRdCost )
+ {
+   m_pcEncCfg      = pCfg;
+diff --git a/source/Lib/EncoderLib/EncModeCtrl.h b/source/Lib/EncoderLib/EncModeCtrl.h
+index c643ea1..57efec9 100644
+--- a/source/Lib/EncoderLib/EncModeCtrl.h
++++ b/source/Lib/EncoderLib/EncModeCtrl.h
+@@ -312,6 +312,16 @@ protected:
+ 
+ public:
+ 
++  // 310723-tanvir added
++  static_vector<ComprCUCtx, (MAX_CU_DEPTH << 2)>& getVecCompr()
++  {
++    CHECK(m_ComprCUCtxList.empty(), "Accessing empty list!");
++    return m_ComprCUCtxList;
++  }
++  void ChangeTestMode(int mode);
++  void Modify(CodingStructure* cs, Partitioner& partitioner);
++  // 310723-tanvir ended
++
+   virtual bool useModeResult        ( const EncTestMode& encTestmode, CodingStructure*& tempCS,  Partitioner& partitioner ) = 0;
+   virtual bool checkSkipOtherLfnst  ( const EncTestMode& encTestmode, CodingStructure*& tempCS,  Partitioner& partitioner ) = 0;
+ 

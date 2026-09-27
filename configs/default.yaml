@@ -1,0 +1,49 @@
+# Default training configuration.
+#
+# These values reproduce the experiment reported in the paper. Paths are left
+# empty on purpose: set them here, or pass --train-path / --val-path to
+# scripts/train.py (command-line flags override this file).
+#
+# See docs/training.md for the rationale behind each setting.
+
+# --- reproducibility ---------------------------------------------------------
+seed: 42
+
+# --- data --------------------------------------------------------------------
+train_path: null          # e.g. datasets/balanced   (ImageFolder, 0/ .. 5/)
+val_path: null            # e.g. datasets/validation (ImageFolder, 0/ .. 5/)
+num_workers: 4
+input_size: 224           # 32x32 blocks are bilinearly upsampled to this
+
+# --- model -------------------------------------------------------------------
+model_name: swin_base_patch4_window7_224
+num_classes: 6            # NS, QT, BTH, BTV, TTH, TTV
+pretrained: true          # ImageNet weights; required to reproduce the results
+drop_rate: 0.2
+attn_drop_rate: 0.1
+
+# --- optimisation ------------------------------------------------------------
+batch_size: 16
+num_epochs: 12
+lr: 3.0e-5
+weight_decay: 0.05
+min_lr: 1.0e-6            # cosine-annealing floor
+grad_clip: 1.0
+
+# --- regularisation ----------------------------------------------------------
+use_mixup: true
+mixup_alpha: 0.8
+use_cutmix: false         # implemented but not used by the reported model
+cutmix_alpha: 1.0
+aug_prob: 0.5             # fraction of batches that get MixUp
+label_smoothing: 0.1      # retained for reference; loss is plain cross-entropy
+
+# --- exponential moving average ----------------------------------------------
+ema_decay: 0.999
+
+# --- early stopping ----------------------------------------------------------
+patience: 3
+
+# --- output ------------------------------------------------------------------
+output_dir: runs/swin_base
+checkpoint_name: best_model.pth

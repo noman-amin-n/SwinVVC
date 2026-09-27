@@ -1,0 +1,62 @@
+# --- Python -----------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+.installed.cfg
+
+# --- Virtual environments ---------------------------------------------------
+.venv/
+venv/
+env/
+ENV/
+
+# --- Testing / tooling ------------------------------------------------------
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+.tox/
+
+# --- Notebooks --------------------------------------------------------------
+.ipynb_checkpoints/
+
+# --- Editors / OS -----------------------------------------------------------
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# --- Model weights (large; distribute as release assets) --------------------
+*.pth
+*.pt
+*.ckpt
+*.onnx
+
+# --- Data: raw video, traces, datasets, generated artefacts -----------------
+*.yuv
+*.bin
+*.vvc
+sequences/
+traces/
+datasets/
+blocks/
+labels/
+predictions/
+vtm_input/
+runs/
+results/
+figures/
+
+# Keep the tracked config templates even though configs/ holds text files.
+!configs/*.yaml
+!configs/*.csv
+
+# --- VTM build trees --------------------------------------------------------
+VVCSoftware_VTM*/
