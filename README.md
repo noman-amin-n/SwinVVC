@@ -59,7 +59,7 @@ with the partition patch for fast encoding. See
 ## Installation
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/noman-amin-n/SwinVVC.git
 cd SwinVVC
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
